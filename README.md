@@ -20,7 +20,7 @@ AWS service : this includes, but not limited:
 
 Services that require more constants can subclass `ServiceConstants` and inherent default behaviors.  As an example, consider a class representing APIGateway.  `ServiceConstants` doesn't sufficiently represent all the constants needed to sign requests so we must create a sublcass.
 
-```
+```python
 class APIGatewayServiceConstants(ServiceConstants):
     # Parsed by 'from_url' method.  Matched group array is passed as *args list to
     # constructor so ordinal positions of match values must match constructor args.
@@ -53,7 +53,7 @@ class APIGatewayServiceConstants(ServiceConstants):
 `auth.Authorization` encapsulates the signing behavior.  Essentially, it generates a hash value for given
 inputs that is used as an HTTP header value (Authoriaztion) -- or alternatively a querystring parameter.
 
-```
+```python
 ...
 
 a = auth.Authorization(ServiceConstants(*args), Credentials())
