@@ -33,17 +33,17 @@ class TestCanonical(object):
         amzdate = '20160101T000000Z'
 
         # Test default
-        headers = canon.canonical_headers({
-                'x-amz-date': amzdate
-                })
+        headers = canon.canonical_headers(amzdate=amzdate)
+
         
         tools.assert_equal(headers, 'host:%s\nx-amz-date:%s\n' % (c.host, amzdate))
         
         # Test additional
-        headers = canon.canonical_headers({
-                'x-amz-date': amzdate,
-                'x-amz-B':    'B',
-                'x-amz-a':    'A'
+        headers = canon.canonical_headers(
+            amzdate=amzdate, 
+            headers={
+                'x-amz-B': 'B',
+                'x-amz-a': 'A'
                 })
         
         tools.assert_equal(headers, 'host:%s\nx-amz-a:A\nx-amz-b:B\nx-amz-date:%s\n' % \
@@ -54,15 +54,11 @@ class TestCanonical(object):
         c = get_constants()
         canon = get_builder(c)
 
-        signed_headers = canon.signed_headers({})
+        signed_headers = canon.signed_headers()
         tools.assert_equal(signed_headers, 'host;x-amz-date')
 
         # Pass in list instead of dict
-        signed_headers = canon.signed_headers({
-                'x-amz-date': '20160101T000000Z',
-                'x-amz-B':    'B',
-                'x-amz-a':    'A'                
-                })
+        signed_headers = canon.signed_headers(['x-amz-B', 'x-amz-a'])
         tools.assert_equal(signed_headers, 'host;x-amz-a;x-amz-b;x-amz-date')
         
 
@@ -79,16 +75,28 @@ class TestCanonical(object):
         method = 'GET'
         uri = '/'
         qs = ''
-        headers = {'x-amz-date':'20160101T000000Z'}
-        payload = ''
-        canon_request = canon.canonical_request(method, uri, qs, headers, payload)
+        amzdate = '20160101T000000Z'
 
+        # Request - 1
+        canon_request = canon.canonical_request(amzdate, uri, method, qs)
         request = ('GET', '/', '', 
                    'host:foo-service.bar-region.amazonaws.com',
                    'x-amz-date:20160101T000000Z', '', 'host;x-amz-date', 
                    'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855')
         expected = '\n'.join(request)
-        
+        tools.assert_equal(canon_request, expected)
+
+
+        # Request - 2
+        headers = {'x-amz-Foo': 'foo', 'x-amz-bar': 'bar'}
+        canon_request = canon.canonical_request(amzdate, uri, method, qs, headers)
+        request = ('GET', '/', '', 
+                   'host:foo-service.bar-region.amazonaws.com',
+                   'x-amz-bar:bar', 'x-amz-date:20160101T000000Z', 'x-amz-foo:foo',
+                   '', 'host;x-amz-bar;x-amz-date;x-amz-foo', 
+                   'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855')
+
+        expected = '\n'.join(request)
         tools.assert_equal(canon_request, expected)
 
 

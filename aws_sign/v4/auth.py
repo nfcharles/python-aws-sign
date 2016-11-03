@@ -35,10 +35,12 @@ class Authorization(object):
         signing = Authorization.sign(service, self.constants.signing)
         return signing
 
-    def header(self, headers, amzdate, datestamp, uri, qs, method, payload):
+    def header(self, amzdate, datestamp, uri, method='GET', qs='', headers=None, payload=None):
+        headers = headers if headers else {}
+        payload = payload if payload else ''
         credential_scope  = self.canonical_builder.credential_scope(datestamp)
-        canonical_request = self.canonical_builder.canonical_request(method, uri, qs, headers, payload)
-        signed_headers    = self.canonical_builder.signed_headers(headers)
+        canonical_request = self.canonical_builder.canonical_request(amzdate, uri, method, qs, headers, payload)
+        signed_headers    = self.canonical_builder.signed_headers(headers.keys())
         string_to_sign    = self.string_to_sign(amzdate, credential_scope, canonical_request)
         signature         = self.signature(datestamp, string_to_sign)
 

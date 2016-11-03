@@ -65,13 +65,13 @@ class TestAuthorization(object):
         awth   = get_auth(consts, creds)
         
         amzdate = '20160101T000000Z'
-        hdrs    = {'x-amz-date': amzdate}
+        hdrs    = {}
         stamp   = '20160101'
         uri     = '/'
         qs      = ''
         meth    = 'GET'
         load    = ''
-        header  = awth.header(hdrs, amzdate, stamp, uri, qs, meth, load)
+        header  = awth.header(amzdate, stamp, uri, meth, qs, hdrs, load)
 
         expected = 'AWS4-HMAC-SHA256 ' + \
             'Credential=foo/20160101/bar-region/foo-service/aws4_request, ' + \
