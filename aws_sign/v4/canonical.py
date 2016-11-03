@@ -87,7 +87,7 @@ class ArgumentBuilder(object):
 
         return ''.join('%s:%s\n' % (k, hdrs[raw]) for k, raw in pairs)
 
-    def canonical_request(self, amzdate, uri, method, qs, headers=None, payload=None):
+    def canonical_request(self, amzdate, uri, method, qs, headers=None, payload=''):
         """Builds canonical request
         
         Parameters:
@@ -100,7 +100,6 @@ class ArgumentBuilder(object):
             
         Returns canonical request string
         """
-        payload = payload if payload else ''
         return '\n'.join(['%s']*6) % \
             (method, 
              uri, 
