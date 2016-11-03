@@ -1,5 +1,5 @@
+from aws_sign import ServiceConstants
 from aws_sign.v4 import auth
-from aws_sign.v4 import ServiceConstants
 from nose import tools
 
 def get_constants():
