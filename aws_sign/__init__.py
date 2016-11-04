@@ -20,7 +20,7 @@ class ServiceConstants(object):
                 self.dynamo_bar = dynamo_bar
     """
     # Minimum required headers for signing requests
-    HEADERS = {'host': None, 'x-amz-date': None}
+    HEADERS = {}
 
     # Parsed by 'from_url' method.  Matched group array is passed as *args list to
     # constructor so ordinal positions of match values must match constructor args
@@ -31,13 +31,13 @@ class ServiceConstants(object):
                                ([\w\-]+)        # region
                                .amazonaws.com$) # rest """, re.X)
 
-    def __init__(self, host, service, region, algorithm='AWS4-HMAC-SHA256', signing='aws4_request', headers=None):
+    def __init__(self, host, service, region, algorithm, signing, headers=None):
         self.host      = host
         self.service   = service
         self.region    = region
         self.algorithm = algorithm
         self.signing   = signing
-        self.headers   = headers if headers else self._merge({'host': host})
+        self.headers   = headers if headers else self.HEADERS
     
     def _merge(self, override):
         """Merges headers

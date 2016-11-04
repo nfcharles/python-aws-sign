@@ -1,9 +1,9 @@
-from aws_sign import ServiceConstants
+from aws_sign.v4 import Sigv4ServiceConstants
 from aws_sign.v4 import auth
 from nose import tools
 
 def get_constants():
-    return ServiceConstants.from_url('foo-service.bar-region.amazonaws.com')
+    return Sigv4ServiceConstants.from_url('foo-service.bar-region.amazonaws.com')
 
 class Credentials(object):
     def __init__(self, access, secret):

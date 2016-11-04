@@ -1,9 +1,9 @@
 from aws_sign.v4 import canonical
-from aws_sign import ServiceConstants
+from aws_sign.v4 import Sigv4ServiceConstants
 from nose import tools
 
 def get_constants():
-    return ServiceConstants.from_url('foo-service.bar-region.amazonaws.com')
+    return Sigv4ServiceConstants.from_url('foo-service.bar-region.amazonaws.com')
 
 def get_builder(c):
     return canonical.ArgumentBuilder(c)
