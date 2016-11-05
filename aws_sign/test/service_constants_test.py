@@ -50,7 +50,7 @@ class TestServiceConstants(object):
     def test_from_url_kwargs_override(self):
         headers   = {'foo-header': 'foo'}
         consts = ServiceConstants.from_url(HOST, 
-                                           headers=headers,
+                                           #headers=headers,
                                            **ALG_SIGN)
         
         tools.assert_equals(consts.host, HOST)
@@ -58,7 +58,7 @@ class TestServiceConstants(object):
         tools.assert_equals(consts.region, REGION)
         tools.assert_equals(consts.algorithm, ALGORITHM)
         tools.assert_equals(consts.signing, SIGNING)
-        tools.assert_equals(consts.headers, headers)
+        #tools.assert_equals(consts.headers, headers)
         
 
     @tools.raises(Exception)

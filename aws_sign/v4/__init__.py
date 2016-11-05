@@ -7,9 +7,9 @@ class Sigv4ServiceConstants(ServiceConstants):
     for signing.
     """
     # Minimum required headers for signature v4 signed requests
-    HEADERS = {'host': None, 'x-amz-date': None}
+    __REQUIRED_HEADERS = {'host': None, 'x-amz-date': None}
 
-    def __init__(self, host, service, region, headers=None):
+    def __init__(self, host, service, region):
         """Initializes v4 specific constants
 
         Parameters
@@ -22,6 +22,12 @@ class Sigv4ServiceConstants(ServiceConstants):
                                                     region,
                                                     algorithm='AWS4-HMAC-SHA256',
                                                     signing='aws4_request')
-        self.headers = headers if headers else self._merge({'host':host})
+        self.__headers = self._merge(super(Sigv4ServiceConstants, self).headers,
+                                     self.__REQUIRED_HEADERS,
+                                     {'host': self.host})
+        
+    @property
+    def headers(self):
+        return self.__headers
     
     

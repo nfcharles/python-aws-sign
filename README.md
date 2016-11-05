@@ -21,7 +21,7 @@ AWS service : this includes, but not limited:
 Services that require more constants can subclass `ServiceConstants` and inherent default behaviors.  As an example, consider a class representing APIGateway.  `ServiceConstants` doesn't sufficiently represent all the constants needed to sign requests so we must create a sublcass.
 
 ```python
-class APIGatewayServiceConstants(ServiceConstants):
+class APIGatewayServiceConstants(Sigv4ServiceConstants):
     # Parsed by 'from_url' method.  Matched group array is passed as *args list to
     # constructor so ordinal positions of match values must match constructor args.
     URL_REGEX = re.compile(r"""(?:https://)?   # scheme
@@ -34,11 +34,17 @@ class APIGatewayServiceConstants(ServiceConstants):
                                \/
                                ([\w]+)$        # stage""", re.X)
     
+    def __init__(self, *args):
+        """
+        Parameters
+            host: service host
+            service: service name
+            region: service region
+            stage: api gateway stage
+        """
+        super(APIGatewayServiceConstants, self).__init__(*args[:3])
+        self.stage = args[3]
     
-    def __init__(self, host, service, region, stage, algorithm='AWS4-HMAC-SHA256', signing='aws4_request'):
-        super(APIGatewayServiceConstants, self).__init__(host, service, region, algorithm, signing)
-        self.stage = stage
-
     @property
     def url(self):
         return 'https://%s/%s' % (self.host, self.stage)
@@ -47,6 +53,23 @@ class APIGatewayServiceConstants(ServiceConstants):
         return 'host=%s\nservice=%s\nregion=%s\nstage=%s\nalgorithm=%s\nsigning=%s\nheaders=%s' % \
             (self.host, self.service, self.region, self.stage, self.algorithm, self.signing, self.headers)
 ```
+
+Consider another example using dynamodb
+
+```python
+class DynamoDBServiceConstants(Sigv4ServiceConstants):
+    __REQUIRED_HEADERS = {'content-type':None, 'x-amz-target': None}
+
+    def __init__(self, *args):
+        super(DynamoDBServiceConstants, self).__init__(*args)
+        self.__headers = self._merge(super(DynamoDBServiceConstants, self).headers,
+                                     self.__REQUIRED_HEADERS)
+
+    @property
+    def headers(self):
+        return self.__headers
+```
+
 
 ### Authorization ###
 
