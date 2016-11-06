@@ -2,7 +2,7 @@
 
 AWS Sign provides classes for signing AWS HTTP requests adhering to the signature version 4 specification.  
 
-Additionally, a tornado based client capable of sending signature v4 signed requests is provided.
+Additionally, a tornado based HTTP client capable of sending signature v4 signed requests is provided.
 
 
 ## Classes ##
@@ -70,11 +70,21 @@ class DynamoDBServiceConstants(Sigv4ServiceConstants):
         return self.__headers
 ```
 
+Note that `DynamoDBServiceConstants` has inherited `host` and `x-amz-date` headers from `Sigv4ServiceConstants` instance.
+```python
+>>> sc = DynamoDBServiceConstants.from_url('https://dynamodb.us-west-2.amazonaws.com')
+>>> pprint.pprint(sc.headers)
+{'content-type': None,
+ 'host': 'dynamodb.us-west-2.amazonaws.com',
+ 'x-amz-date': None,
+ 'x-amz-target': None}
+```
 
 ### Authorization ###
 
-`auth.Authorization` encapsulates the signing behavior.  Essentially, it generates a hash value for given
-inputs that is used as an HTTP header value (Authoriaztion) -- or alternatively a querystring parameter.
+`auth.Authorization` encapsulates the signing behavior.  Invoke the `header` instance method to get the
+HTTP 'Authorization' header data necessary for signed requests.  Also note that signing values can be encoded
+in querystring parameters.
 
 ```python
 ...
@@ -82,7 +92,7 @@ inputs that is used as an HTTP header value (Authoriaztion) -- or alternatively 
 a = auth.Authorization(ServiceConstants(*args), Credentials())
 
 # Sign request
-http_headers['Authoriaztion'] = a.header(**kwargs)
+http_headers['Authorization'] = a.header(**kwargs)
 
 ...
 ```
