@@ -7,8 +7,9 @@ class ServiceConstants(object):
     Each AWS service has a list of values representative of its configuration;
     this class serves as a base set of these parameters.
 
-    Sublclasses should override `URL_REGEX` for `from_url` inherited behavior to
-    work properly.  See URL_REGEX comments below for more information.
+    Subclasses should override `URL_REGEX` if url pattern deviates from standard form (this
+    is the case when there's additional information to parse in the url); Required for `from_url` 
+    inherited behavior to work properly.  See URL_REGEX comments below for more information.
 
     __REQUIRED_HEADERS and __header conventions should be used for aggregating required
     headers among all subclasses.  See example.
