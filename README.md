@@ -96,7 +96,7 @@ http_headers['Authorization'] = a.header(**kwargs)
 
 ## Client ##
 
-An tornado based HTTP client is provided that supports signature version 4 signing.
+An tornado based HTTP client is provided that implicitly supports signature version 4 signing.
 
 ```python
 from boto3 import session
