@@ -82,9 +82,7 @@ class ArgumentBuilder(object):
         """
         amzd = {'x-amz-date': amzdate}
         hdrs = self._merge_headers(dict(headers, **amzd) if headers else amzd)
-        
         pairs = sorted([(k.lower(), k) for k in hdrs.keys()])
-
         return ''.join('%s:%s\n' % (k, hdrs[raw]) for k, raw in pairs)
 
     def canonical_request(self, amzdate, uri, method, qs, headers=None, payload=''):

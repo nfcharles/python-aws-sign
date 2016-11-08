@@ -47,7 +47,7 @@ class APIGatewayServiceConstants(Sigv4ServiceConstants):
     
     @property
     def url(self):
-        return 'https://%s/%s' % (self.host, self.stage)
+        return 'https://%s' % self.host
 
     def __str__(self):
         return 'host=%s\nservice=%s\nregion=%s\nstage=%s\nalgorithm=%s\nsigning=%s\nheaders=%s' % \
@@ -100,7 +100,35 @@ http_headers['Authorization'] = a.header(**kwargs)
 
 ## Client ##
 
-TBD
+An tornado based HTTP client is provided that supports signature version 4 signing.
+
+```python
+from boto3 import session
+from aws_sign.v4 import Sigv4ServiceConstants
+from aws_sign.client import http
+from tornado.httpclient import HTTPError
+
+import pprint
+import json
+
+
+# Define APIGatewayServiceConstants
+...
+
+try:
+    creds = session.Session().get_credentials()
+    endpoint = '12345abcde.execute-api.us-west-2.amazonaws.com/test'
+
+    client = http.HTTP(creds, endpoint, svc_cons_cls=APIGatewayServiceConstants)
+    resp = client.get('/test/foo')
+
+    pprint.pprint(json.loads(resp.body))
+    # {'foo': ['bar', 'baz']}
+except HTTPError as e:
+    print e.response
+except Exception, e:
+    print e 
+```
 
 # License #
 

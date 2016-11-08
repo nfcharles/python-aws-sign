@@ -20,7 +20,7 @@ class ServiceConstants(object):
             URL_REGEX = re.compile(...)
 
             def __init__(self, *args):
-                super(FooServiceConstants, self).__init__(*args[-2]):
+                super(FooServiceConstants, self).__init__(*args[:-1]):
                 self.foo = args[-1]
                 self.__headers = self._merge(super(FooServiceConstants, self).headers,
                                              self.__REQUIRED_HEADERS)
