@@ -45,10 +45,6 @@ class APIGatewayServiceConstants(Sigv4ServiceConstants):
         super(APIGatewayServiceConstants, self).__init__(*args[:3])
         self.stage = args[3]
     
-    @property
-    def url(self):
-        return 'https://%s' % self.host
-
     def __str__(self):
         return 'host=%s\nservice=%s\nregion=%s\nstage=%s\nalgorithm=%s\nsigning=%s\nheaders=%s' % \
             (self.host, self.service, self.region, self.stage, self.algorithm, self.signing, self.headers)
