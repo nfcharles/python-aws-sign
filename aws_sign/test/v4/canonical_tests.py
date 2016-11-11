@@ -1,4 +1,4 @@
-from aws_sign.v4 import canonical
+from aws_sign.v4.canonical import ArgumentBuilder
 from aws_sign.v4 import Sigv4ServiceConstants
 from nose import tools
 
@@ -6,20 +6,10 @@ def get_constants():
     return Sigv4ServiceConstants.from_url('foo-service.bar-region.amazonaws.com')
 
 def get_builder(c):
-    return canonical.ArgumentBuilder(c)
+    return ArgumentBuilder(c)
 
 class TestCanonical(object):
 
-    def test_canonical_query_string(self):
-        c = get_constants()
-        canon = get_builder(c)
-        qs = canon.canonical_query_string(**{'x-aws-a': 'a', 'x-aws-b': 'b'})
-        tools.assert_equal(qs, 'x-aws-a=a&x-aws-b=b')
-
-        qs = canon.canonical_query_string(**{'x-aws-b': 'b', 'x-aws-a': 'a'})
-        tools.assert_equal(qs, 'x-aws-a=a&x-aws-b=b')
-
-    # TODO: amzdate should be required parameter since it must be set
     def test_canonical_headers(self):
         """Tests canonical header format.
 
@@ -49,7 +39,6 @@ class TestCanonical(object):
         tools.assert_equal(headers, 'host:%s\nx-amz-a:A\nx-amz-b:B\nx-amz-date:%s\n' % \
                                (c.host, amzdate))
 
-    # TODO: arguments should be optional
     def test_signed_headers(self):
         c = get_constants()
         canon = get_builder(c)
@@ -57,17 +46,9 @@ class TestCanonical(object):
         signed_headers = canon.signed_headers()
         tools.assert_equal(signed_headers, 'host;x-amz-date')
 
-        # Pass in list instead of dict
         signed_headers = canon.signed_headers(['x-amz-B', 'x-amz-a'])
         tools.assert_equal(signed_headers, 'host;x-amz-a;x-amz-b;x-amz-date')
         
-
-    def test_canonical_uri(self):
-        c = get_constants()
-        canon = get_builder(c)
-        
-        tools.assert_equal(canon.canonical_uri(), c.url)
-
     def test_canonical_request(self):
         c = get_constants()
         canon = get_builder(c)
@@ -107,3 +88,12 @@ class TestCanonical(object):
         datestamp = '20160101'
         scope = canon.credential_scope(datestamp)
         tools.assert_equal(scope, '20160101/bar-region/foo-service/aws4_request')
+
+    def test_query_string(self):
+        tools.assert_equal(ArgumentBuilder.canonical_query_string(), '')
+
+        qs = ArgumentBuilder.canonical_query_string({'foo': 1, 'bar': 2, 'baz': 3})
+        tools.assert_equal(qs, 'bar=2&baz=3&foo=1')
+
+        qs = ArgumentBuilder.canonical_query_string({'foo bar': 1, 'baz': 2})
+        tools.assert_equal(qs, 'baz=2&foo+bar=1')

@@ -1,4 +1,5 @@
 import copy
+import urllib
 import base64
 import hashlib
 
@@ -21,21 +22,23 @@ class ArgumentBuilder(object):
         """
         return hashlib.sha256(payload).hexdigest()
 
-    def _build_query_string(self, **kwargs):
-        """Constructs querystring 
-
-        The following invocation 
-            build_query_string({'amz-Foo': 'FOO', 'amz-bar': 'BAR'})
-        results in
-            querystring = 'amz-bar=BAR&amz-foo=FOO'
-
+    @staticmethod
+    def canonical_query_string(query_args=None):
+        """Preprocess query string for signing
+        
+        foo = CLS.canonical_query_string({'amz-Foo': 'FOO', 'amz-bar': 'BAR'})
+          where foo = 'amz-bar=BAR&amz-Foo=FOO'
+          
         Parameters:
-            kwargs:
-
-        Returns string of sorted querystring parameters
+            query_args: query parameters dict
+    
+        Returns sorted, urlencoded querystring in string format
         """
-        keys = sorted(kwargs.keys())
-        return '&'.join(['%s=%s' % (k, kwargs[k]) for k in keys])
+        if query_args is None:
+            return ''
+        else:
+            items = sorted(query_args.items(), key=lambda i: i[0])
+            return urllib.urlencode(items, True)
 
     def _merge_headers(self, headers):
         """Merges input headers with default headers 
@@ -48,7 +51,7 @@ class ArgumentBuilder(object):
         tmp = copy.copy(self.constants.headers)
         tmp.update(headers)
         return tmp
-
+        
     def signed_headers(self, headers=None):
         """ Returns ; delimited list of all headers comprising signature 
 
@@ -62,14 +65,6 @@ class ArgumentBuilder(object):
             headers = []
         return ';'.join(sorted([name.lower() for name in 
                                 set(self.constants.headers.keys() + headers)]))
-
-    def canonical_uri(self):
-        """Returns service uri"""
-        return self.constants.url
-
-    def canonical_query_string(self, **kwargs):
-        """Constructs querystring"""
-        return self._build_query_string(**kwargs)
 
     def canonical_headers(self, amzdate, headers=None):
         """Constructs canonical headers
@@ -86,7 +81,7 @@ class ArgumentBuilder(object):
         return ''.join('%s:%s\n' % (k, hdrs[raw]) for k, raw in pairs)
 
     def canonical_request(self, amzdate, uri, method, qs, headers=None, payload=''):
-        """Builds canonical request
+        """Constructs canonical request
         
         Parameters:
             amzdate: '%Y%m%dT%H%M%sZ' timestamp

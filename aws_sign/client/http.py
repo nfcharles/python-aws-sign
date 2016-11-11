@@ -1,8 +1,8 @@
-from tornado.httpclient  import AsyncHTTPClient, HTTPClient, HTTPRequest
+from tornado.httpclient import AsyncHTTPClient, HTTPClient, HTTPRequest
 from datetime import datetime
-from aws_sign import ServiceConstants
-from aws_sign.v4 import Sigv4ServiceConstants
-from aws_sign.v4 import auth
+from aws.sign import ServiceConstants
+from aws_sign.v4.auth import Authorization
+from aws_sign.v4.canonical import ArgumentBuilder
 
 import re
 
@@ -29,7 +29,7 @@ class HTTP(object):
         AsyncHTTPClient.configure(TORNADO_IMPL[impl])
         self.client = HTTPClient()
         self.cons = svc_cons_cls.from_url(endpoint)
-        self.auth = auth.Authorization(self.cons, creds)
+        self.auth = Authorization(self.cons, creds)
 
     def _amzdate(self, dt):
         """Convert datetime into Amazon timestamp format
@@ -50,17 +50,17 @@ class HTTP(object):
         Returns date string
         """
         return dt.strftime('%Y%m%d')
-
+    
     def sign(self, path, method, headers=None, qs='', payload=''):
         """Generate request authoriazation
         
         Parameters:
             path: uri
-            qs: querystring
+            query_args: query args dict
             
         Returns request signing headers
         """
-        now = datetime.utcnow()
+        now     = datetime.utcnow()
         amzdate = self._amzdate(now)
         dtstamp = self._datestamp(now)
         
@@ -72,13 +72,12 @@ class HTTP(object):
         print 'QS=%s' % qs
 
         auth_header = self.auth.header(amzdate, dtstamp, path, method, qs, {'x-amz-date':amzdate}, payload)
-        print 'AUTHORIZATION=%s' % auth_header
 
         # Set HTTP headers for request
         signed = {'x-amz-date':amzdate, 'Authorization': auth_header}
         return signed if not headers else dict(headers, **signed)
 
-    def get(self, path, headers=None, qs=''):
+    def get(self, path, headers=None, query_args=None):
         """ GET request
 
         Parameters:
@@ -87,26 +86,31 @@ class HTTP(object):
 
         Returns HTTP response object
         """
-        url     = self.cons.url + path
+        qs      = ArgumentBuilder.canonical_query_string(query_args)
+        url     = self.cons.url + path + ('?%s' % qs if qs else '')
         method  = 'GET'
         headers = self.sign(path, method, headers, qs)
         request = HTTPRequest(url, method, headers)
-
+        
+        print 'URL=%s' % url
         return self.client.fetch(request)
     
-    def post(self, path, payload, headers=None, qs=''):
+    def post(self, path, payload, headers=None, query_args=None):
         """ POST request
         
         Parameters:
             path: uri
             payload: request body
             headers: HTTP headers
+            query_args: query args dict
 
         Returns HTTP response object
         """
-        url     = self.cons.url + path
+        qs      = ArgumentBuilder.canonical_query_string(query_args)
+        url     = self.cons.url + path + ('?%s' % qs if qs else '')
         method  = 'POST'
         headers = self.sign(path, method, headers, qs, payload)
         request = HTTPRequest(url, method, headers, body=payload)
 
+        print 'URL=%s' % url
         return self.client.fetch(request)
