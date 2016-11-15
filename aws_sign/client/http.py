@@ -1,6 +1,6 @@
 from tornado.httpclient import AsyncHTTPClient, HTTPClient, HTTPRequest
 from datetime import datetime
-from aws.sign import ServiceConstants
+from aws_sign import ServiceConstants
 from aws_sign.v4.auth import Authorization
 from aws_sign.v4.canonical import ArgumentBuilder
 
@@ -10,6 +10,18 @@ TORNADO_IMPL = {
     'curl':   'tornado.curl_httpclient.CurlAsyncHTTPClient',
     'simple': 'tornado.simple_httpclient.SimpleAsyncHTTPClient'
 }
+
+def _merge(required, optional=None):
+    """Merges dict
+
+    Merges base dict with optional dict if possible
+
+    Parameters:
+        required: dict
+        optional: dict
+    Returns dict
+    """
+    return dict(optional, **required) if optional else required
 
 # TODO: add logging
 class HTTP(object):
@@ -28,8 +40,8 @@ class HTTP(object):
         """
         AsyncHTTPClient.configure(TORNADO_IMPL[impl])
         self.client = HTTPClient()
-        self.cons = svc_cons_cls.from_url(endpoint)
-        self.auth = Authorization(self.cons, creds)
+        self.cons   = svc_cons_cls.from_url(endpoint)
+        self.auth   = Authorization(self.cons, creds)
 
     def _amzdate(self, dt):
         """Convert datetime into Amazon timestamp format
@@ -63,7 +75,7 @@ class HTTP(object):
         now     = datetime.utcnow()
         amzdate = self._amzdate(now)
         dtstamp = self._datestamp(now)
-        
+
         # Generate 'Authorization' header for signing request
         print 'AMZDATE=%s' % amzdate
         print 'DSTAMP=%s' % dtstamp
@@ -71,11 +83,16 @@ class HTTP(object):
         print 'PATH=%s' % path
         print 'QS=%s' % qs
 
-        auth_header = self.auth.header(amzdate, dtstamp, path, method, qs, {'x-amz-date':amzdate}, payload)
+        auth_header = self.auth.header(amzdate, 
+                                       dtstamp, 
+                                       path, 
+                                       method, 
+                                       qs, 
+                                       _merge({'x-amz-date':amzdate}, headers), 
+                                       payload)
 
         # Set HTTP headers for request
-        signed = {'x-amz-date':amzdate, 'Authorization': auth_header}
-        return signed if not headers else dict(headers, **signed)
+        return _merge({'x-amz-date':amzdate, 'Authorization': auth_header}, headers)
 
     def get(self, path, headers=None, query_args=None):
         """ GET request

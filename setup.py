@@ -11,10 +11,12 @@ setup(
     packages = [
         'aws_sign',
         'aws_sign.v4',
+        'aws_sign.client'
         ],
     tests_require = [
         'mock',
         'nose'
         ],
     install_requires = [
+        'tornado >= 4.0'
         ])
