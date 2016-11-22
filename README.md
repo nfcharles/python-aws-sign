@@ -98,6 +98,7 @@ http_headers['Authorization'] = a.header(**kwargs)
 
 An tornado based HTTP client is provided that implicitly supports signature version 4 signing.
 
+
 ```python
 from boto3 import session
 from aws_sign.v4 import Sigv4ServiceConstants
@@ -115,11 +116,12 @@ try:
     creds = session.Session().get_credentials()
     endpoint = '12345abcde.execute-api.us-west-2.amazonaws.com/test'
 
-    client = http.HTTP(creds, endpoint, svc_cons_cls=APIGatewayServiceConstants)
+    client = http.get_instance(endpoint, APIGatewayServiceConstants, creds, async=False, sign=True)
     resp = client.get('/test/foo')
 
-    pprint.pprint(json.loads(resp.body))
+    pprint.pprint(json.loads(resp))
     # {'foo': ['bar', 'baz']}
+
 except HTTPError as e:
     print e.response
 except Exception, e:

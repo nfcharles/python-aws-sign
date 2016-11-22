@@ -346,7 +346,7 @@ if __name__ == '__main__':
 
     # Example 2 - sync run
     sync_client = get_instance(endpoint, APIGatewayServiceConstants, creds, async=False, sign=True)
-    run(lambda: sync_client.get(path))
+    run(sync_client.get, path)
     
     sync_noauth_client = get_instance(endpoint, APIGatewayServiceConstants, creds, async=False, sign=False)
-    run(lambda: sync_noauth_client.get(path))
+    run(sync_noauth_client.get, path)
