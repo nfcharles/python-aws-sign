@@ -94,7 +94,10 @@ class AuthMixin(object):
         
         Parameters:
             path: uri
-            query_args: query args dict
+            method: HTTP method
+            headers: HTTP headers
+            qs: url querystring
+            payload: HTTP payload
             
         Returns request signing headers
         """
@@ -109,10 +112,6 @@ class AuthMixin(object):
                    'headers': _merge({'x-amz-date': amzdate}, headers),
                    'payload': payload if payload else ''
                  }
-        
-        for item in kwargs.items():
-            self.logger.debug('%s=%s' % item)
-            
         return { 'x-amz-date': amzdate, 'Authorization': self.auth.header(**kwargs) }
     
   
@@ -157,15 +156,14 @@ class HTTP(object):
 
         self.logger.debug('URL=%s' % url)
         self.logger.debug('HEADERS=%s' % headers)
-
         return (url, headers)
 
-    def request(self, method, path, headers=None, query_args=None, payload=None, **kwargs):
+    def request(self, method, path, headers=None, query_args=None, payload=None):
         """Disptach HTTP request """
         url, headers = self.prepare_args(path, method, query_args, headers, payload)
-        return self.client.fetch(HTTPRequest(url, method, headers, body=payload, **kwargs)).body
+        return self.client.fetch(HTTPRequest(url, method, headers, body=payload)).body
 
-    def get(self, path, headers=None, query_args=None, **kwargs):
+    def get(self, path, headers=None, query_args=None):
         """ GET request
 
         Parameters:
@@ -176,9 +174,9 @@ class HTTP(object):
 
         Returns HTTP response object
         """
-        return self.request('GET', path, headers, query_args, **kwargs)
+        return self.request('GET', path, headers, query_args)
     
-    def post(self, path, payload, headers=None, query_args=None, **kwargs):
+    def post(self, path, payload, headers=None, query_args=None):
         """ POST request
         
         Parameters:
@@ -190,7 +188,7 @@ class HTTP(object):
 
         Returns HTTP response object
         """
-        return self.request('POST', path, headers, query_args, payload, **kwargs)
+        return self.request('POST', path, headers, query_args, payload)
 
 
 class SyncHTTP(HTTP):
@@ -205,19 +203,19 @@ class AsyncHTTP(HTTP):
         super(AsyncHTTP, self).__init__(AsyncHTTPClient(defaults=http_defaults), constants, logger)
 
     @gen.coroutine
-    def request(self, method, path, headers=None, query_args=None, payload=None, **kwargs):
+    def request(self, method, path, headers=None, query_args=None, payload=None):
         url, headers = self.prepare_args(path, method, query_args, headers, payload)
-        resp = yield self.client.fetch(HTTPRequest(url, method, headers, body=payload, **kwargs))
+        resp = yield self.client.fetch(HTTPRequest(url, method, headers, body=payload))
         raise gen.Return(resp.body)
     
     @gen.coroutine
-    def get(self, path, headers=None, query_args=None, **kwargs):
-        resp = yield self.request('GET', path, headers, query_args, **kwargs)
+    def get(self, path, headers=None, query_args=None):
+        resp = yield self.request('GET', path, headers, query_args)
         raise gen.Return(resp)
     
     @gen.coroutine
-    def post(self, path, payload, headers=None, query_args=None, **kwargs):
-        resp = yield self.request('POST', path, headers, query_args, payload, **kwargs)
+    def post(self, path, payload, headers=None, query_args=None):
+        resp = yield self.request('POST', path, headers, query_args, payload)
         raise gen.Return(resp)
 
 
@@ -309,7 +307,7 @@ if __name__ == '__main__':
             print e      
 
     @gen.coroutine
-    def run_async(fetch, *args):
+    def run_async(loop, fetch, *args):
         try:
             resp = yield fetch(*args)
             pprint.pprint(json.loads(resp))
@@ -343,7 +341,7 @@ if __name__ == '__main__':
     async_client = get_instance(endpoint, APIGatewayServiceConstants, creds, async=True, sign=True)
 
     loop = ioloop.IOLoop.current()
-    loop.spawn_callback(lambda: run_async(async_client.get, path))
+    loop.spawn_callback(lambda: run_async(loop, async_client.get, path))
     loop.start()
 
     # Example 2 - sync run
