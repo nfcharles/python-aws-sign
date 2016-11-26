@@ -134,7 +134,20 @@ class HTTP(object):
         self.logger    = logger if logger else _get_logger()
 
     def sign(self, path, method, headers, qs, payload):
-        """Implement """
+        """Implements signing algorithm
+        
+        Subclasses should override this method with a specific signing
+        implementation.
+
+        Parameters:
+            path: uri
+            method: HTTP method
+            headers: HTTP headers
+            qs: urlencoded querystring 
+            payload: HTTP request body
+            
+        Returns signed HTTP headers
+        """
         self.logger.debug('Default signing')
         return headers
 
@@ -246,7 +259,7 @@ def get_instance(endpoint, constants_cls=None, creds=None, async=False, sign=Tru
 
     base  = _get_base_cls(async, sign)
     attrs = {'auth': Authorization(constants, creds)} if sign else {}
-    return type('HTTPClient', base, attrs)(constants.from_url(endpoint))
+    return type('HTTPClient', base, attrs)(constants)
 
 
 
@@ -297,10 +310,12 @@ if __name__ == '__main__':
     # END CLASS DEFINITION
 
 
+    content_type = {'content-type':'application/x-www-form-urlencoded'}
+
     # HTTP client runners
     def run(fetch, *args):
         try:
-            pprint.pprint(json.loads(fetch(*args)))
+            pprint.pprint(json.loads(fetch(*args, headers=content_type)))
         except HTTPError, e:
             print e.response.body
         except Exception, e:
@@ -309,7 +324,7 @@ if __name__ == '__main__':
     @gen.coroutine
     def run_async(loop, fetch, *args):
         try:
-            resp = yield fetch(*args)
+            resp = yield fetch(*args, headers=content_type)
             pprint.pprint(json.loads(resp))
         except HTTPError, e:
             print e.response.body

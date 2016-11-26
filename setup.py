@@ -18,5 +18,6 @@ setup(
         'nose'
         ],
     install_requires = [
-        'tornado >= 4.0'
+        'tornado >= 4.0',
+        'boto3'
         ])
