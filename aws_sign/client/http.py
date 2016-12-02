@@ -1,9 +1,10 @@
 from tornado import gen
 from tornado.httpclient import AsyncHTTPClient, HTTPClient, HTTPRequest
-from datetime import datetime
 from aws_sign import ServiceConstants
 from aws_sign.v4.auth import Authorization
 from aws_sign.v4.canonical import ArgumentBuilder
+from datetime import datetime
+from copy import deepcopy
 
 import re
 import logging
@@ -55,17 +56,19 @@ def _get_logger(name='aws_sign.http'):
 #
 # Utils
 #
-def _merge(required, optional=None):
-    """Merges dict
-
-    Merges base dict with optional dict if possible
-
-    Parameters:
-        required: dict
-        optional: dict
-    Returns dict
-    """
-    return dict(optional, **required) if optional else required
+def _merge(source, overrides):
+    for ok, ov in overrides.iteritems():
+        if ok in source:
+            if type(ov) == type(source[ok]):
+                if type(ov) == dict:
+                    _merge(source[ok], ov)
+                else:
+                    source[ok] = ov
+            else:
+                raise Exception("Mismatched types for key=%s: src=%s ov=%s" % (ok, type(source[ok]), type(ov)))
+        else:
+            source[ok] = ov
+    return source
 
 
 class AuthMixin(object):
@@ -109,7 +112,7 @@ class AuthMixin(object):
                    'uri': path,
                    'method': method,
                    'qs': qs,
-                   'headers': _merge({'x-amz-date': amzdate}, headers),
+                   'headers': self._merge({'x-amz-date': amzdate}, headers),
                    'payload': payload if payload else ''
                  }
         return { 'x-amz-date': amzdate, 'Authorization': self.auth.header(**kwargs) }
@@ -121,18 +124,44 @@ class HTTP(object):
     Contains interfaces necessary for AWS signature signing support.  Subclasses should mixin
     behavior for signature support.
     """
-    def __init__(self, client, constants, logger=None):
+    def __init__(self, client, constants, defaults=None, logger=None):
         """ Initialize instance with tornado client implemenation
         
         Parameters:
             client: Tornado HTTP client
             constants: ServiceConstants object
+            defaults: keyword dict of default HTTPRequest parameters
             logger: logger
         """
         self.client    = client
-        self.constants = constants 
+        self.constants = constants
+        self.defaults  = defaults
         self.logger    = logger if logger else _get_logger()
 
+    def _merge(self, base, overrides):
+        """
+        Applies overrides to base dict
+         
+        Parameters:
+            base: base dict 
+            overrides: applies overrides to base dict, if provided
+
+        Returns dict
+        """
+        return _merge(deepcopy(base), overrides) if overrides else base
+
+    def _path(self, path):
+        return path if path[0] == '/' else '/%s' % path
+
+    def _url(self, path, qs):
+        return self.constants.url + path + ('?%s' % qs if qs else '')
+
+    def _log_request(self, params):
+        self.logger.debug('HTTPRequest')
+        self.logger.debug('-----------')
+        for k, v in params.iteritems():
+            self.logger.debug('%s=%s' % (k.upper(), v))
+    
     def sign(self, path, method, headers, qs, payload):
         """Implements signing algorithm
         
@@ -151,30 +180,32 @@ class HTTP(object):
         self.logger.debug('Default signing')
         return headers
 
-    def prepare_args(self, path, method, query_args=None, headers=None, payload=None):
+    def prepare_args(self, method, path, query_args=None, headers=None, payload=None):
         """Preformats arguments for request 
         
         Parameters:
+            method: HTTP method
             path: uri
             headers: HTTP headers
             query_args: query arguments dict
             payload: HTTP payload
 
-        Returns tuple of prepped arguments
+        Returns dict of prepped arguments
         """
-        path    = path if path[0] == '/' else '/%s' % path
+        headers = headers if headers else {}
         qs      = ArgumentBuilder.canonical_query_string(query_args)
-        url     = self.constants.url + path + ('?%s' % qs if qs else '')
-        headers = _merge(self.sign(path, method, headers, qs, payload), headers)        
-
-        self.logger.debug('URL=%s' % url)
-        self.logger.debug('HEADERS=%s' % headers)
-        return (url, headers)
+        path    = self._path(path)
+        url     = self._url(path, qs)
+        headers = self._merge(self.sign(path, method, headers, qs, payload), headers)        
+        kwargs  = self._merge(self.defaults, {'url': url, 'method': method, 'headers': headers, 'body': payload})
+        
+        self._log_request(kwargs)
+        return kwargs
 
     def request(self, method, path, headers=None, query_args=None, payload=None):
         """Disptach HTTP request """
-        url, headers = self.prepare_args(path, method, query_args, headers, payload)
-        return self.client.fetch(HTTPRequest(url, method, headers, body=payload)).body
+        kwargs = self.prepare_args(method, path, query_args, headers, payload)
+        return self.client.fetch(HTTPRequest(**kwargs))
 
     def get(self, path, headers=None, query_args=None):
         """ GET request
@@ -205,21 +236,21 @@ class HTTP(object):
 
 
 class SyncHTTP(HTTP):
-    def __init__(self, constants, impl='curl', logger=None):
+    def __init__(self, constants, impl='curl', defaults=None, logger=None):
         AsyncHTTPClient.configure(TORNADO_IMPL[impl])
-        super(SyncHTTP, self).__init__(HTTPClient(), constants, logger)
+        super(SyncHTTP, self).__init__(HTTPClient(), constants, defaults, logger)
 
 
 class AsyncHTTP(HTTP):
-    def __init__(self, constants, impl='curl', logger=None, http_defaults=None):
+    def __init__(self, constants, impl='curl', defaults=None, logger=None):
         AsyncHTTPClient.configure(TORNADO_IMPL[impl])
-        super(AsyncHTTP, self).__init__(AsyncHTTPClient(defaults=http_defaults), constants, logger)
+        super(AsyncHTTP, self).__init__(AsyncHTTPClient(), constants, defaults, logger)
 
     @gen.coroutine
     def request(self, method, path, headers=None, query_args=None, payload=None):
-        url, headers = self.prepare_args(path, method, query_args, headers, payload)
-        resp = yield self.client.fetch(HTTPRequest(url, method, headers, body=payload))
-        raise gen.Return(resp.body)
+        kwargs = self.prepare_args(method, path, query_args, headers, payload)
+        resp = yield self.client.fetch(HTTPRequest(**kwargs))
+        raise gen.Return(resp)
     
     @gen.coroutine
     def get(self, path, headers=None, query_args=None):
@@ -236,7 +267,7 @@ def _get_base_cls(async=False, sign=True):
     impl = (AsyncHTTP,) if async else (SyncHTTP,)
     return (AuthMixin,) + impl if sign else impl 
 
-def get_instance(endpoint, constants_cls=None, creds=None, async=False, sign=True):
+def get_instance(endpoint, constants_cls=None, creds=None, async=False, sign=True, defaults=None):
     """Create HTTPClient instance
     
     An HTTPClient instance is dynamically assembled based on ``async`` and ``sign``
@@ -248,6 +279,7 @@ def get_instance(endpoint, constants_cls=None, creds=None, async=False, sign=Tru
         creds: AWS Credentials
         async: bool that determines if underlying client is async or sync
         sign: bool that determines if requests are signed
+        defaults: keyword dict of default HTTPRequest parameters 
        
     Returns HTTPClient instance
     """
@@ -257,9 +289,10 @@ def get_instance(endpoint, constants_cls=None, creds=None, async=False, sign=Tru
     if constants_cls:
         constants = constants_cls.from_url(endpoint)
 
-    base  = _get_base_cls(async, sign)
-    attrs = {'auth': Authorization(constants, creds)} if sign else {}
-    return type('HTTPClient', base, attrs)(constants)
+    defaults = defaults if defaults else {}
+    base     = _get_base_cls(async, sign)
+    attrs    = {'auth': Authorization(constants, creds)} if sign else {}
+    return type('HTTPClient', base, attrs)(constants, defaults=defaults)
 
 
 
@@ -310,12 +343,10 @@ if __name__ == '__main__':
     # END CLASS DEFINITION
 
 
-    content_type = {'content-type':'application/x-www-form-urlencoded'}
-
     # HTTP client runners
     def run(fetch, *args):
         try:
-            pprint.pprint(json.loads(fetch(*args, headers=content_type)))
+            pprint.pprint(json.loads(fetch(*args).body.decode('utf-8')))
         except HTTPError, e:
             print e.response.body
         except Exception, e:
@@ -324,8 +355,8 @@ if __name__ == '__main__':
     @gen.coroutine
     def run_async(loop, fetch, *args):
         try:
-            resp = yield fetch(*args, headers=content_type)
-            pprint.pprint(json.loads(resp))
+            resp = yield fetch(*args)
+            pprint.pprint(json.loads(resp.body.decode('utf-8')))
         except HTTPError, e:
             print e.response.body
         except Exception, e:
@@ -338,12 +369,13 @@ if __name__ == '__main__':
     #
 
     # Parse arguments
-    endpoint, path = None, None
+    endpoint = None
     http_test = os.environ.get('AWS_SIGN_HTTP_TEST', None)
     if http_test:
         env      = json.loads(http_test)
         endpoint = env.get('endpoint', None)
         path     = env.get('path', '/')
+        defaults = env.get('defaults', {})
         
     if not endpoint:
         raise Exception("Please specify an API endpoint")
@@ -352,16 +384,28 @@ if __name__ == '__main__':
     if not creds:
         raise Exception("Unknown credentials")
     
+    #
     # Example 1 - async run
-    async_client = get_instance(endpoint, APIGatewayServiceConstants, creds, async=True, sign=True)
+    #
+
+    # signed request
+    print "ASYNC RUN"
+    client = get_instance(endpoint, APIGatewayServiceConstants, creds, async=True, sign=True, defaults=defaults)
 
     loop = ioloop.IOLoop.current()
-    loop.spawn_callback(lambda: run_async(loop, async_client.get, path))
+    loop.spawn_callback(lambda: run_async(loop, client.get, path))
     loop.start()
 
+    #
     # Example 2 - sync run
-    sync_client = get_instance(endpoint, APIGatewayServiceConstants, creds, async=False, sign=True)
-    run(sync_client.get, path)
+    #
+
+    # signed request
+    print "SYNC RUN - signed"
+    client = get_instance(endpoint, APIGatewayServiceConstants, creds, async=False, sign=True, defaults=defaults)
+    run(client.get, path)
     
-    sync_noauth_client = get_instance(endpoint, APIGatewayServiceConstants, creds, async=False, sign=False)
-    run(sync_noauth_client.get, path)
+    # unsigned request
+    print "SYNC RUN - unsigned"
+    client = get_instance(endpoint, APIGatewayServiceConstants, creds, async=False, sign=False, defaults=defaults)
+    run(client.get, path)
