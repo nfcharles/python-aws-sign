@@ -43,7 +43,7 @@ logging_config = dict(
     loggers = {
         'aws_sign.http': {
             'handlers': ['h'],
-            'level': logging.DEBUG,
+            'level': logging.INFO,
             'propagate': False
             },
         }  
@@ -70,6 +70,10 @@ def _merge(source, overrides):
             source[ok] = ov
     return source
 
+
+class UnknownCredentialsException(Exception):
+    def __init__(self):
+        super(UnknownCredentialsException, self).__init__("AWS Credentials are required for signing.")
 
 class AuthMixin(object):
     def _amzdate(self, dt):
@@ -267,7 +271,7 @@ def _get_base_cls(async=False, sign=True):
     impl = (AsyncHTTP,) if async else (SyncHTTP,)
     return (AuthMixin,) + impl if sign else impl 
 
-def get_instance(endpoint, constants_cls=None, creds=None, async=False, sign=True, defaults=None):
+def get_instance(endpoint, constants_cls=None, defaults=None, async=False, sign=False, creds=None):
     """Create HTTPClient instance
     
     An HTTPClient instance is dynamically assembled based on ``async`` and ``sign``
@@ -276,15 +280,15 @@ def get_instance(endpoint, constants_cls=None, creds=None, async=False, sign=Tru
     Parameters:
         endpoint: url endpoint
         constants_cls: ServiceConstants factory class
-        creds: AWS Credentials
+        defaults: keyword dict of default HTTPRequest parameters 
         async: bool that determines if underlying client is async or sync
         sign: bool that determines if requests are signed
-        defaults: keyword dict of default HTTPRequest parameters 
+        creds: AWS Credentials
        
     Returns HTTPClient instance
     """
     if sign and creds is None:
-        raise Exception("AWS Credentials required for signing.")
+        raise UnknownCredentialsException()
     
     if constants_cls:
         constants = constants_cls.from_url(endpoint)
@@ -293,119 +297,3 @@ def get_instance(endpoint, constants_cls=None, creds=None, async=False, sign=Tru
     base     = _get_base_cls(async, sign)
     attrs    = {'auth': Authorization(constants, creds)} if sign else {}
     return type('HTTPClient', base, attrs)(constants, defaults=defaults)
-
-
-
-#
-#
-# TESTING TESTING TESTING 
-#
-#
-
-if __name__ == '__main__':
-    #
-    # TODO: Factor this out into examples subpackage.
-    #
-
-    from aws_sign.v4 import Sigv4ServiceConstants
-    from tornado.httpclient import HTTPError
-    from tornado import ioloop
-    from boto3 import session
-
-    import tornado.gen
-    import pprint
-    import json
-    import re
-    import os
-
-    #
-    # APIGateway interface 
-    #
-    class APIGatewayServiceConstants(Sigv4ServiceConstants):
-        URL_REGEX = re.compile(r"""(?:https://)?   # scheme
-                               (\w+            # api prefix
-                               \.
-                               ([\w\-]+)       # service
-                               \.
-                               ([\w\-]+)       # region
-                               .amazonaws.com)
-                               \/
-                               ([\w]+)$        # stage""", re.X)
-        
-        def __init__(self, *args):
-            super(APIGatewayServiceConstants, self).__init__(*args[:3])
-            self.stage = args[3]
-
-        def __str__(self):
-            return 'host=%s\nservice=%s\nregion=%s\nstage=%s\nalgorithm=%s\nsigning=%s\nheaders=%s' % \
-                (self.host, self.service, self.region, self.stage, self.algorithm, self.signing, self.headers)
-
-    # END CLASS DEFINITION
-
-
-    # HTTP client runners
-    def run(fetch, *args):
-        try:
-            pprint.pprint(json.loads(fetch(*args).body.decode('utf-8')))
-        except HTTPError, e:
-            print e.response.body
-        except Exception, e:
-            print e      
-
-    @gen.coroutine
-    def run_async(loop, fetch, *args):
-        try:
-            resp = yield fetch(*args)
-            pprint.pprint(json.loads(resp.body.decode('utf-8')))
-        except HTTPError, e:
-            print e.response.body
-        except Exception, e:
-            print e      
-        finally:
-            loop.stop()
-
-    #
-    # MAIN 
-    #
-
-    # Parse arguments
-    endpoint = None
-    http_test = os.environ.get('AWS_SIGN_HTTP_TEST', None)
-    if http_test:
-        env      = json.loads(http_test)
-        endpoint = env.get('endpoint', None)
-        path     = env.get('path', '/')
-        defaults = env.get('defaults', {})
-        
-    if not endpoint:
-        raise Exception("Please specify an API endpoint")
-
-    creds = session.Session().get_credentials()
-    if not creds:
-        raise Exception("Unknown credentials")
-    
-    #
-    # Example 1 - async run
-    #
-
-    # signed request
-    print "ASYNC RUN"
-    client = get_instance(endpoint, APIGatewayServiceConstants, creds, async=True, sign=True, defaults=defaults)
-
-    loop = ioloop.IOLoop.current()
-    loop.spawn_callback(lambda: run_async(loop, client.get, path))
-    loop.start()
-
-    #
-    # Example 2 - sync run
-    #
-
-    # signed request
-    print "SYNC RUN - signed"
-    client = get_instance(endpoint, APIGatewayServiceConstants, creds, async=False, sign=True, defaults=defaults)
-    run(client.get, path)
-    
-    # unsigned request
-    print "SYNC RUN - unsigned"
-    client = get_instance(endpoint, APIGatewayServiceConstants, creds, async=False, sign=False, defaults=defaults)
-    run(client.get, path)

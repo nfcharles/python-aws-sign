@@ -15,7 +15,7 @@ class Authorization(object):
       * querystring parameter
       * HTTP request header
     """
-    def __init__(self, constants,  creds):
+    def __init__(self, constants, creds):
         """Initializes auth
         
         Parameters:

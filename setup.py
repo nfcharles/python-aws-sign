@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name = 'aws_sign',
-    version = '0.2.0',
+    version = '0.3.0',
     author = 'Navil Charles',
     author_email = 'navil.charles@gmail.com',
     description = 'AWS Signing Tools',
@@ -27,6 +27,5 @@ setup(
         'nose'
         ],
     install_requires = [
-        'tornado >= 4.0',
-        'boto3'
+        'tornado >= 4.0'
         ])
