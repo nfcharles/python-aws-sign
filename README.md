@@ -113,13 +113,14 @@ import json
 ...
 
 try:
-    creds = session.Session().get_credentials()
+    creds    = session.Session().get_credentials()
     endpoint = '12345abcde.execute-api.us-west-2.amazonaws.com/test'
+    defaults = {'headers': {'content-type': 'application/x-www-form-urlencoded'}}
 
-    client = http.get_instance(endpoint, APIGatewayServiceConstants, creds, async=False, sign=True)
+    client = http.get_instance(endpoint, APIGatewayServiceConstants, defaults=defaults, async=False, sign=True, creds=creds)
     resp = client.get('/test/foo')
 
-    pprint.pprint(json.loads(resp))
+    pprint.pprint(json.loads(resp.body))
     # {'foo': ['bar', 'baz']}
 
 except HTTPError as e:

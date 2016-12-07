@@ -110,3 +110,17 @@ class Authorization(object):
         signature         = self.signature(datestamp, string_to_sign)
 
         return self._header(credential_scope, signed_headers, signature)
+
+    def headers(self, *args, **kwargs):
+        """Returns all headers for signing
+
+        Assumed AWS roles must also set the 'X-Amz-Security-Token' header in addition to 
+        the 'Authorization' header.
+
+        Returns headers dict
+        """
+        ret = {}
+        if self.creds.token:
+            ret['X-Amz-Security-Token'] = self.creds.token
+        ret['Authorization'] = self.header(*args, **kwargs)
+        return ret

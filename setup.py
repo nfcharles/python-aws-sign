@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name = 'aws_sign',
-    version = '0.3.0',
+    version = '0.4.0',
     author = 'Navil Charles',
     author_email = 'navil.charles@gmail.com',
     description = 'AWS Signing Tools',

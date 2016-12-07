@@ -56,6 +56,14 @@ def _get_logger(name='aws_sign.http'):
 #
 # Utils
 #
+def _lower(source, acc):
+    for k, v in source.iteritems():
+        acc[k.lower()] = _lower(v, {}) if type(v) is dict else v
+    return acc
+
+def _normalize(source):
+    return _lower(source, {})
+
 def _merge(source, overrides):
     for ok, ov in overrides.iteritems():
         if ok in source:
@@ -119,7 +127,7 @@ class AuthMixin(object):
                    'headers': self._merge({'x-amz-date': amzdate}, headers),
                    'payload': payload if payload else ''
                  }
-        return { 'x-amz-date': amzdate, 'Authorization': self.auth.header(**kwargs) }
+        return self._merge({'x-amz-date': amzdate}, self.auth.headers(**kwargs))
     
   
 class HTTP(object):
@@ -197,11 +205,17 @@ class HTTP(object):
         Returns dict of prepped arguments
         """
         headers = headers if headers else {}
+
+        # Headers can vary due to case insensitivity so we must normalize names for proper merging 
+        # between defaults and input headers.
+        if 'headers' in self.defaults:
+            self.defaults['headers'] = _normalize(self.defaults['headers'])
+
         qs      = ArgumentBuilder.canonical_query_string(query_args)
         path    = self._path(path)
         url     = self._url(path, qs)
         headers = self._merge(self.sign(path, method, headers, qs, payload), headers)        
-        kwargs  = self._merge(self.defaults, {'url': url, 'method': method, 'headers': headers, 'body': payload})
+        kwargs  = self._merge(self.defaults, {'url': url, 'method': method, 'headers': _normalize(headers), 'body': payload})
         
         self._log_request(kwargs)
         return kwargs
@@ -271,14 +285,15 @@ def _get_base_cls(async=False, sign=True):
     impl = (AsyncHTTP,) if async else (SyncHTTP,)
     return (AuthMixin,) + impl if sign else impl 
 
-def get_instance(endpoint, constants_cls=None, defaults=None, async=False, sign=False, creds=None):
+def get_instance(endpoint, constants_cls=ServiceConstants, defaults=None, 
+                 async=False, sign=False, creds=None, logger=None):
     """Create HTTPClient instance
     
     An HTTPClient instance is dynamically assembled based on ``async`` and ``sign``
     parameters.  A v4 signature authorizer is mixed in if signing is required.
 
     Parameters:
-        endpoint: url endpoint
+        endpoint: service endpoint
         constants_cls: ServiceConstants factory class
         defaults: keyword dict of default HTTPRequest parameters 
         async: bool that determines if underlying client is async or sync
@@ -290,10 +305,9 @@ def get_instance(endpoint, constants_cls=None, defaults=None, async=False, sign=
     if sign and creds is None:
         raise UnknownCredentialsException()
     
-    if constants_cls:
-        constants = constants_cls.from_url(endpoint)
+    constants = constants_cls.from_url(endpoint)
 
     defaults = defaults if defaults else {}
     base     = _get_base_cls(async, sign)
     attrs    = {'auth': Authorization(constants, creds)} if sign else {}
-    return type('HTTPClient', base, attrs)(constants, defaults=defaults)
+    return type('HTTPClient', base, attrs)(constants, defaults=defaults, logger=logger)
