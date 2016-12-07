@@ -1,3 +1,8 @@
+0.4.1
+* `constants_cls` parameter in http.get_instance has DefaultServiceConstants
+default value
+* Added path method to ServiceConstants
+
 0.4.0
 
 * Added apigateway module

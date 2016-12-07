@@ -102,6 +102,9 @@ class ServiceConstants(object):
         else:
             raise Exception('Error parsing url: %s' % url)
 
+    def path(self, *args):
+        return '/'.join(args)
+
     def __str__(self):
         return 'host=%s\nservice=%s\nregion=%s\nalgorithm=%s\nsigning=%s\nheaders=%s' % \
             (self.host, self.service, self.region, self.algorithm, self.signing, self.headers)

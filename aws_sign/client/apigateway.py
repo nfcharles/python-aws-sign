@@ -17,6 +17,9 @@ class APIGatewayServiceConstants(Sigv4ServiceConstants):
     def __init__(self, *args):
         super(APIGatewayServiceConstants, self).__init__(*args[:3])
         self.stage = args[3]
+
+    def path(self, *args):
+        return '%s/%s' % (self.stage, '/'.join(args))
         
     def __str__(self):
         return 'host=%s\nservice=%s\nregion=%s\nstage=%s\nalgorithm=%s\nsigning=%s\nheaders=%s' % \
@@ -24,5 +27,5 @@ class APIGatewayServiceConstants(Sigv4ServiceConstants):
 
     
 def get_instance(endpoint, *args, **kwargs):
-    return http.get_instance(endpoint, APIGatewayServiceConstants, *args, **kwargs)
+    return http.get_instance(endpoint, APIGatewayServiceConstants, *args, sign=True, **kwargs)
 

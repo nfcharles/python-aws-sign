@@ -83,6 +83,21 @@ class UnknownCredentialsException(Exception):
     def __init__(self):
         super(UnknownCredentialsException, self).__init__("AWS Credentials are required for signing.")
 
+class DefaultServiceConstants(ServiceConstants):
+    URL_REGEX = re.compile(r"""(?:https://)?   # scheme
+                               ([\w\-\.]+)     # endpoint""", re.X)    
+
+    def __init__(self, host):
+        self.host = host
+
+    @property
+    def url(self):
+        return 'http://%s' % self.host
+
+    def __str__(self):
+        return 'host=%s' % self.host
+
+
 class AuthMixin(object):
     def _amzdate(self, dt):
         """Convert datetime into Amazon timestamp format
@@ -285,8 +300,8 @@ def _get_base_cls(async=False, sign=True):
     impl = (AsyncHTTP,) if async else (SyncHTTP,)
     return (AuthMixin,) + impl if sign else impl 
 
-def get_instance(endpoint, constants_cls=ServiceConstants, defaults=None, 
-                 async=False, sign=False, creds=None, logger=None):
+def get_instance(endpoint, constants_cls=DefaultServiceConstants, defaults=None, 
+                 async=True, sign=False, creds=None, logger=None):
     """Create HTTPClient instance
     
     An HTTPClient instance is dynamically assembled based on ``async`` and ``sign``
