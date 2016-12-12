@@ -1,6 +1,10 @@
 import copy
 import re
 
+class URLParseException(Exception):
+    def __init__(self, url):
+        super(URLParseException, self).__init__('Unable to parse url %s.  Expected format=http[s]?://[\w\-\.]+' % url)
+
 class ServiceConstants(object):
     """Logical grouping of AWS service constants
 
@@ -8,7 +12,7 @@ class ServiceConstants(object):
     this class serves as a base set of these parameters.
 
     Subclasses should override `URL_REGEX` if url pattern deviates from standard form (this
-    is the case when there's additional information to parse in the url); Required for `from_url` 
+    is the case when there's additional information to parse in the url); required for `from_url` 
     inherited behavior to work properly.  See URL_REGEX comments below for more information.
 
     __REQUIRED_HEADERS and __header conventions should be used for aggregating required
@@ -47,13 +51,14 @@ class ServiceConstants(object):
     # Parsed by 'from_url' method.  Matched group array is passed as *args list to
     # constructor so ordinal positions of match values must match constructor args
     # respectively.
-    URL_REGEX = re.compile(r"""(?:https://)?    # scheme
+    URL_REGEX = re.compile(r"""(http[s]?)://    # scheme
                                (([\w\-]+)       # service
                                \.
                                ([\w\-]+)        # region
                                .amazonaws.com$) # rest """, re.X)
 
-    def __init__(self, host, service, region, algorithm, signing):
+    def __init__(self, scheme, host, service, region, algorithm, signing):
+        self.scheme    = scheme
         self.host      = host
         self.service   = service
         self.region    = region
@@ -69,14 +74,14 @@ class ServiceConstants(object):
             
         Returns merged header dict
         """
-        hd = copy.copy(base)
-        for h in args:
-            hd.update(h)
-        return hd
+        source = copy.copy(base)
+        for other in args:
+            source.update(other)
+        return source
  
     @property
     def url(self):
-        return 'https://%s' % self.host
+        return '%s://%s' % (self.scheme, self.host)
 
     @property
     def headers(self):
@@ -100,11 +105,11 @@ class ServiceConstants(object):
         if ret:
             return cls(*ret.groups(), **kwargs)
         else:
-            raise Exception('Error parsing url: %s' % url)
+            raise URLParseException(url)
 
     def path(self, *args):
         return '/'.join(args)
 
     def __str__(self):
-        return 'host=%s\nservice=%s\nregion=%s\nalgorithm=%s\nsigning=%s\nheaders=%s' % \
-            (self.host, self.service, self.region, self.algorithm, self.signing, self.headers)
+        return 'scheme=%s\nhost=%s\nservice=%s\nregion=%s\nalgorithm=%s\nsigning=%s\nheaders=%s' % \
+            (self.scheme, self.host, self.service, self.region, self.algorithm, self.signing, self.headers)

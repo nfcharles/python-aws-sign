@@ -57,14 +57,17 @@ def _get_logger(name='aws_sign.http'):
 # Utils
 #
 def _lower(source, acc):
+    """Set all dict keys to lowercase format."""
     for k, v in source.iteritems():
         acc[k.lower()] = _lower(v, {}) if type(v) is dict else v
     return acc
 
 def _normalize(source):
+    """Creates a uniform format for dict keys."""
     return _lower(source, {})
 
 def _merge(source, overrides):
+    """Deep merge of dicts."""
     for ok, ov in overrides.iteritems():
         if ok in source:
             if type(ov) == type(source[ok]):
@@ -84,18 +87,15 @@ class UnknownCredentialsException(Exception):
         super(UnknownCredentialsException, self).__init__("AWS Credentials are required for signing.")
 
 class DefaultServiceConstants(ServiceConstants):
-    URL_REGEX = re.compile(r"""(?:https://)?   # scheme
-                               ([\w\-\.]+)     # endpoint""", re.X)    
+    URL_REGEX = re.compile(r"""(http[s]?)://   # scheme
+                               ([\w\-\.]+)  # endpoint""", re.X)    
 
-    def __init__(self, host):
+    def __init__(self, scheme, host):
+        self.scheme = scheme
         self.host = host
 
-    @property
-    def url(self):
-        return 'http://%s' % self.host
-
     def __str__(self):
-        return 'host=%s' % self.host
+        return 'scheme=%s\nhost=%s' % (self.scheme, self.host)
 
 
 class AuthMixin(object):
@@ -140,8 +140,7 @@ class AuthMixin(object):
                    'method': method,
                    'qs': qs,
                    'headers': self._merge({'x-amz-date': amzdate}, headers),
-                   'payload': payload if payload else ''
-                 }
+                   'payload': payload if payload else '' }
         return self._merge({'x-amz-date': amzdate}, self.auth.headers(**kwargs))
     
   
@@ -221,7 +220,7 @@ class HTTP(object):
         """
         headers = headers if headers else {}
 
-        # Headers can vary due to case insensitivity so we must normalize names for proper merging 
+        # Like headers can vary due to case insensitivity so we must normalize names for proper merging 
         # between defaults and input headers.
         if 'headers' in self.defaults:
             self.defaults['headers'] = _normalize(self.defaults['headers'])

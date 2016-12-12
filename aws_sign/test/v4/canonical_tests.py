@@ -3,7 +3,7 @@ from aws_sign.v4 import Sigv4ServiceConstants
 from nose import tools
 
 def get_constants():
-    return Sigv4ServiceConstants.from_url('foo-service.bar-region.amazonaws.com')
+    return Sigv4ServiceConstants.from_url('https://foo-service.bar-region.amazonaws.com')
 
 def get_builder(c):
     return ArgumentBuilder(c)

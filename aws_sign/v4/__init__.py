@@ -9,7 +9,7 @@ class Sigv4ServiceConstants(ServiceConstants):
     # Minimum required headers for signature v4 signed requests
     __REQUIRED_HEADERS = {'host': None, 'x-amz-date': None}
 
-    def __init__(self, host, service, region):
+    def __init__(self, scheme, host, service, region):
         """Initializes v4 specific constants
 
         Parameters
@@ -17,7 +17,8 @@ class Sigv4ServiceConstants(ServiceConstants):
             service: service name
             region: service region
             """
-        super(Sigv4ServiceConstants, self).__init__(host,
+        super(Sigv4ServiceConstants, self).__init__(scheme, 
+                                                    host,
                                                     service,
                                                     region,
                                                     algorithm='AWS4-HMAC-SHA256',

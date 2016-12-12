@@ -10,6 +10,7 @@ SIGNING   = 'aws4_request'
 
 def default_service_constants():
     return Sigv4ServiceConstants(
+        'https',
         HOST,
         SERVICE,
         REGION)
@@ -32,31 +33,22 @@ class TestServiceConstants(object):
     def test_defaults(self):
         consts = default_service_constants()
 
-        tools.assert_equal(consts.host, HOST)
-        tools.assert_equal(consts.service, SERVICE)
-        tools.assert_equal(consts.region, REGION)
-        print 'HEADERS ', consts.headers
-        tools.assert_equal(consts.headers, {'host': HOST, 'x-amz-date': None})
-        tools.assert_equal(consts.algorithm, ALGORITHM)
-        tools.assert_equal(consts.signing, SIGNING)
-
-    def test_from_url(self):
-        consts = Sigv4ServiceConstants.from_url(HOST)
-        
+        tools.assert_equals(consts.scheme, 'https')
         tools.assert_equals(consts.host, HOST)
         tools.assert_equals(consts.service, SERVICE)
         tools.assert_equals(consts.region, REGION)
-        tools.assert_equal(consts.algorithm, ALGORITHM)
-        tools.assert_equal(consts.signing, SIGNING)
-        
-    def test_from_url_with_scheme(self):
+        tools.assert_equals(consts.headers, {'host': HOST, 'x-amz-date': None})
+        tools.assert_equals(consts.algorithm, ALGORITHM)
+        tools.assert_equals(consts.signing, SIGNING)
+
+    def test_from_url(self):
         consts = Sigv4ServiceConstants.from_url('https://%s' % HOST)
         
         tools.assert_equals(consts.host, HOST)
         tools.assert_equals(consts.service, SERVICE)
         tools.assert_equals(consts.region, REGION)        
-        tools.assert_equal(consts.algorithm, ALGORITHM)
-        tools.assert_equal(consts.signing, SIGNING)
+        tools.assert_equals(consts.algorithm, ALGORITHM)
+        tools.assert_equals(consts.signing, SIGNING)
 
     def test_header_aggregation(self):
         consts = DynamoDBServiceConstants.from_url('https://dynamodb.us-west-2.amazonaws.com')

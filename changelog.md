@@ -1,3 +1,6 @@
+0.4.2
+* Updated ServiceConstants scheme parsing and url property
+
 0.4.1
 * `constants_cls` parameter in http.get_instance has DefaultServiceConstants
 default value
