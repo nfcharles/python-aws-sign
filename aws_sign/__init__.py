@@ -2,8 +2,8 @@ import copy
 import re
 
 class URLParseException(Exception):
-    def __init__(self, url):
-        super(URLParseException, self).__init__('Unable to parse url %s.  Expected format=http[s]?://[\w\-\.]+' % url)
+    def __init__(self, url, url_format):
+        super(URLParseException, self).__init__('Unable to parse url %s.  Expected format=%s' % (url, url_format))
 
 class ServiceConstants(object):
     """Logical grouping of AWS service constants
@@ -48,14 +48,16 @@ class ServiceConstants(object):
     # Minimum required headers for signing requests
     __REQUIRED_HEADERS = {}
 
+    FORMAT = 'http[s]?://[\w\-\.]+amazonaws.com'
+
     # Parsed by 'from_url' method.  Matched group array is passed as *args list to
     # constructor so ordinal positions of match values must match constructor args
     # respectively.
-    URL_REGEX = re.compile(r"""(http[s]?)://    # scheme
-                               (([\w\-]+)       # service
-                               \.
-                               ([\w\-]+)        # region
-                               .amazonaws.com$) # rest """, re.X)
+    URL_REGEX = re.compile(r"""^(http[s]?)://    # scheme
+                                (([\w\-]+)       # service
+                                \.
+                                ([\w\-]+)        # region
+                                .amazonaws.com$) # rest """, re.X)
 
     def __init__(self, scheme, host, service, region, algorithm, signing):
         self.scheme    = scheme
@@ -105,7 +107,7 @@ class ServiceConstants(object):
         if ret:
             return cls(*ret.groups(), **kwargs)
         else:
-            raise URLParseException(url)
+            raise URLParseException(url, cls.FORMAT)
 
     def path(self, *args):
         return '/'.join(args)

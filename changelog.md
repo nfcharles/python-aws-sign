@@ -1,3 +1,6 @@
+0.4.3
+* DefaultServiceConstants supports parsing endpoints with ports.
+
 0.4.2
 * Updated ServiceConstants scheme parsing and url property
 

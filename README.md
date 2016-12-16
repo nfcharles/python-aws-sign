@@ -18,13 +18,13 @@ AWS service : this includes, but not limited:
 
 `ServiceConstants` provides a logical grouping of these values.
 
-Services that require more constants can subclass `ServiceConstants` and inherent default behaviors.  As an example, consider a class representing APIGateway.  `ServiceConstants` doesn't sufficiently represent all the constants needed to sign requests so we must create a sublcass.
+Services that require more constants should subclass `ServiceConstants`.  As an example, consider a class representing APIGateway.  `ServiceConstants` doesn't sufficiently represent all the constants needed to sign requests so we must create a sublcass.
 
 ```python
 class APIGatewayServiceConstants(Sigv4ServiceConstants):
     # Parsed by 'from_url' method.  Matched group array is passed as *args list to
     # constructor so ordinal positions of match values must match constructor args.
-    URL_REGEX = re.compile(r"""(?:https://)?   # scheme
+    URL_REGEX = re.compile(r"""(https)://      # scheme
                                (\w+            # api prefix
                                \.
                                ([\w\-]+)       # service
@@ -33,21 +33,16 @@ class APIGatewayServiceConstants(Sigv4ServiceConstants):
                                .amazonaws.com)
                                \/
                                ([\w]+)$        # stage""", re.X)
-    
+        
     def __init__(self, *args):
-        """
-        Parameters
-            host: service host
-            service: service name
-            region: service region
-            stage: api gateway stage
-        """
-        super(APIGatewayServiceConstants, self).__init__(*args[:3])
-        self.stage = args[3]
-    
+        super(APIGatewayServiceConstants, self).__init__(*args[:4])
+        self.stage = args[4]
+
+    def path(self, *args):
+        return '%s/%s' % (self.stage, '/'.join(args))
+        
     def __str__(self):
-        return 'host=%s\nservice=%s\nregion=%s\nstage=%s\nalgorithm=%s\nsigning=%s\nheaders=%s' % \
-            (self.host, self.service, self.region, self.stage, self.algorithm, self.signing, self.headers)
+        return '%s\nstage=%s' % (super(APIGatewayServiceConstants, self).__str__(), self.stage)
 ```
 
 Consider another example using dynamodb
@@ -114,10 +109,10 @@ import json
 
 try:
     creds    = session.Session().get_credentials()
-    endpoint = '12345abcde.execute-api.us-west-2.amazonaws.com/test'
+    endpoint = 'https://12345abcde.execute-api.us-west-2.amazonaws.com/test'
     defaults = {'headers': {'content-type': 'application/x-www-form-urlencoded'}}
 
-    client = http.get_instance(endpoint, APIGatewayServiceConstants, defaults=defaults, async=False, sign=True, creds=creds)
+    client = http.get_instance(endpoint, APIGatewayServiceConstants, defaults, sign=True, creds=creds)
     resp = client.get('/test/foo')
 
     pprint.pprint(json.loads(resp.body))

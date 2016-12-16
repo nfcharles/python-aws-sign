@@ -87,15 +87,26 @@ class UnknownCredentialsException(Exception):
         super(UnknownCredentialsException, self).__init__("AWS Credentials are required for signing.")
 
 class DefaultServiceConstants(ServiceConstants):
-    URL_REGEX = re.compile(r"""(http[s]?)://   # scheme
-                               ([\w\-\.]+)  # endpoint""", re.X)    
+    URL_REGEX = re.compile(r"""^(http[s]?)://  # scheme
+                                ([\w\-\.]+)    # endpoint
+                                ([:][\d]+)?$   # port""", re.X)    
 
-    def __init__(self, scheme, host):
+    FORMAT = 'http[s]?://[\w\-\.](?:[:][\d]+)'
+
+    def __init__(self, scheme, host, port=None):
         self.scheme = scheme
         self.host = host
+        self.port = int(port[1:]) if port else port
+
+    @property
+    def url(self):
+        url = super(DefaultServiceConstants, self).url
+        if self.port:
+            url += ':%d' % self.port
+        return url
 
     def __str__(self):
-        return 'scheme=%s\nhost=%s' % (self.scheme, self.host)
+        return 'scheme=%s\nhost=%s\nport=%s' % (self.scheme, self.host, self.port)
 
 
 class AuthMixin(object):
