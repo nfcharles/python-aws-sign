@@ -1,15 +1,15 @@
 from tornado import gen
 from tornado.httpclient import AsyncHTTPClient, HTTPClient, HTTPRequest
+
 from aws_sign import ServiceConstants
 from aws_sign.v4.auth import Authorization
 from aws_sign.v4.canonical import ArgumentBuilder
+
 from datetime import datetime
 from copy import deepcopy
 
 import re
 import logging
-import logging.config
-
 
 #
 # Constants
@@ -20,42 +20,11 @@ TORNADO_IMPL = {
 }
 
 #
-# Configure Logging
+# Utils
 #
-logging_config = dict(
-    version = 1,
-    formatters = {
-        'f': {'format':
-              '%(asctime)s %(name)-12s %(levelname)-8s %(message)s'}
-        },
-    
-    handlers = {
-        'h': {'class': 'logging.StreamHandler',
-              'formatter': 'f',
-              'level': logging.DEBUG}
-        },
-
-    root = {
-        'handlers': ['h'],
-        'level': logging.INFO,
-        },
-    
-    loggers = {
-        'aws_sign.http': {
-            'handlers': ['h'],
-            'level': logging.INFO,
-            'propagate': False
-            },
-        }  
-    )
-logging.config.dictConfig(logging_config)
-
 def _get_logger(name='aws_sign.http'):
     return logging.getLogger(name)
 
-#
-# Utils
-#
 def _lower(source, acc):
     """Set all dict keys to lowercase format."""
     for k, v in source.iteritems():
@@ -131,7 +100,7 @@ class AuthMixin(object):
         return dt.strftime('%Y%m%d')
     
     def sign(self, path, method, headers=None, qs='', payload=None):
-        """Generate request authoriazation
+        """Generate all headers required for signed request
         
         Parameters:
             path: uri
@@ -144,15 +113,15 @@ class AuthMixin(object):
         """
         now     = datetime.utcnow()
         amzdate = self._amzdate(now)
-        
-        kwargs = { 'amzdate': amzdate,
-                   'datestamp': self._datestamp(now),
-                   'uri': path,
-                   'method': method,
-                   'qs': qs,
-                   'headers': self._merge({'x-amz-date': amzdate}, headers),
-                   'payload': payload if payload else '' }
-        return self._merge({'x-amz-date': amzdate}, self.auth.headers(**kwargs))
+        amz_hdr = {'x-amz-date': amzdate}
+        return self._merge(amz_hdr, 
+                           self.auth.headers(amzdate=amzdate,
+                                             datestamp=self._datestamp(now),
+                                             uri=path,
+                                             method=method,
+                                             qs=qs,
+                                             headers=self._merge(amz_hdr, headers),
+                                             payload=payload if payload else ''))
     
   
 class HTTP(object):
