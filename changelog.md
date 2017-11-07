@@ -1,3 +1,6 @@
+0.4.6
+* bumping version to allow creation of a new, clean pip
+
 0.4.5
 * http module defers logging configuration to application.
 
