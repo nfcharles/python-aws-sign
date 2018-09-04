@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 from .. import ServiceConstants
 from .. import URLParseException
 from nose import tools
@@ -23,7 +25,7 @@ class TestServiceConstants(object):
     
     def test_defaults(self):
         consts = default_service_constants()
-        print consts
+        print(consts)
 
         tools.assert_equals(consts.scheme, 'https')
         tools.assert_equals(consts.host, HOST)
@@ -62,7 +64,7 @@ class TestServiceConstants(object):
                                            pattern='(https)://((\w+)\.(\w+))',
                                            **ALG_SIGN)
 
-        print consts        
+        print(consts)        
         tools.assert_equal(consts.host, host)
         tools.assert_equal(consts.service, service)
         tools.assert_equal(consts.region, region)

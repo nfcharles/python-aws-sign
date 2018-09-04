@@ -1,3 +1,4 @@
+import six
 from tornado import gen
 from tornado.httpclient import AsyncHTTPClient, HTTPClient, HTTPRequest
 
@@ -27,7 +28,7 @@ def _get_logger(name='aws_sign.http'):
 
 def _lower(source, acc):
     """Set all dict keys to lowercase format."""
-    for k, v in source.iteritems():
+    for k, v in six.iteritems(source):
         acc[k.lower()] = _lower(v, {}) if type(v) is dict else v
     return acc
 
@@ -37,7 +38,7 @@ def _normalize(source):
 
 def _merge(source, overrides):
     """Deep merge of dicts."""
-    for ok, ov in overrides.iteritems():
+    for ok, ov in six.iteritems(overrides):
         if ok in source:
             if type(ov) == type(source[ok]):
                 if type(ov) == dict:
@@ -165,7 +166,7 @@ class HTTP(object):
     def _log_request(self, params):
         self.logger.debug('HTTPRequest')
         self.logger.debug('-----------')
-        for k, v in params.iteritems():
+        for k, v in six.iteritems(params):
             self.logger.debug('%s=%s' % (k.upper(), v))
     
     def sign(self, path, method, headers, qs, payload):
@@ -275,22 +276,22 @@ class AsyncHTTP(HTTP):
         raise gen.Return(resp)
 
 
-def _get_base_cls(async=False, sign=True):
-    impl = (AsyncHTTP,) if async else (SyncHTTP,)
+def _get_base_cls(asynch=False, sign=True):
+    impl = (AsyncHTTP,) if asynch else (SyncHTTP,)
     return (AuthMixin,) + impl if sign else impl 
 
 def get_instance(endpoint, constants_cls=DefaultServiceConstants, defaults=None, 
-                 async=True, sign=False, creds=None, logger=None):
+                 asynch=True, sign=False, creds=None, logger=None):
     """Create HTTPClient instance
     
-    An HTTPClient instance is dynamically assembled based on ``async`` and ``sign``
+    An HTTPClient instance is dynamically assembled based on ``asynch`` and ``sign``
     parameters.  A v4 signature authorizer is mixed in if signing is required.
 
     Parameters:
         endpoint: service endpoint
         constants_cls: ServiceConstants factory class
         defaults: keyword dict of default HTTPRequest parameters 
-        async: bool that determines if underlying client is async or sync
+        asynch: bool that determines if underlying client is asynchronous or synchronous
         sign: bool that determines if requests are signed
         creds: AWS Credentials
        
@@ -302,6 +303,6 @@ def get_instance(endpoint, constants_cls=DefaultServiceConstants, defaults=None,
     constants = constants_cls.from_url(endpoint)
 
     defaults = defaults if defaults else {}
-    base     = _get_base_cls(async, sign)
+    base     = _get_base_cls(asynch, sign)
     attrs    = {'auth': Authorization(constants, creds)} if sign else {}
     return type('HTTPClient', base, attrs)(constants, defaults=defaults, logger=logger)

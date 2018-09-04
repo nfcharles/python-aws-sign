@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 from aws_sign.v4 import Sigv4ServiceConstants
 
 from nose import tools
@@ -53,7 +55,7 @@ class TestServiceConstants(object):
     def test_header_aggregation(self):
         consts = DynamoDBServiceConstants.from_url('https://dynamodb.us-west-2.amazonaws.com')
         
-        print 'DYNAMODB HEADERS ', consts.headers
+        print('DYNAMODB HEADERS ', consts.headers)
         tools.assert_equals(consts.headers, {'host': 'dynamodb.us-west-2.amazonaws.com',
                                              'x-amz-date': None,
                                              'content-type': None,
