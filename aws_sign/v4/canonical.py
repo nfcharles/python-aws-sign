@@ -2,6 +2,8 @@ import copy
 import hashlib
 from six.moves.urllib import parse
 
+from .util import safe_encode
+
 class ArgumentBuilder(object):
     """Constructs requiste arguments for Signature version 4 signing.
 
@@ -98,7 +100,7 @@ class ArgumentBuilder(object):
              qs, 
              self.canonical_headers(amzdate, headers), 
              self.signed_headers(list(headers.keys()) if headers else None),
-             ArgumentBuilder.payload_hash(payload))
+             ArgumentBuilder.payload_hash(safe_encode(payload)))
 
     def credential_scope(self, datestamp):
         """Constructs signing credential scope 
