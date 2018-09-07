@@ -40,7 +40,7 @@ class TestAuthorization(object):
         creds  = get_creds()
         
         sign = auth.Authorization.sign('foo-key', 'bar-msg')
-        tools.assert_equal(sign, "2\xce?\xb4\x12`\xd9\xb2\xae\xe2\xe9\x14\x0c\x837\xca\x13\r\x95\xd7\x93r}\xa1D\xf4\xa6\xb1\xc0Y\xd8\xc4")
+        tools.assert_equal(sign, b"2\xce?\xb4\x12`\xd9\xb2\xae\xe2\xe9\x14\x0c\x837\xca\x13\r\x95\xd7\x93r}\xa1D\xf4\xa6\xb1\xc0Y\xd8\xc4")
 
 
     def test_signature_key(self):
@@ -49,7 +49,7 @@ class TestAuthorization(object):
         awth   = get_auth(consts, creds)
 
         key = awth.signature_key('20160101')
-        tools.assert_equal(key, "\xbbX\x80\x8f?\xa6\xc3\x10\xc2ZS\x10\xc5\xd9\xf0\xd7!\x88\xe9N\x9a.S9\xc3\xde\xd6'\xba-e\x08")
+        tools.assert_equal(key, b"\xbbX\x80\x8f?\xa6\xc3\x10\xc2ZS\x10\xc5\xd9\xf0\xd7!\x88\xe9N\x9a.S9\xc3\xde\xd6'\xba-e\x08")
 
     def test_signature(self):
         consts = get_constants()

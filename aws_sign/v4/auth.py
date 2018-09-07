@@ -2,7 +2,7 @@ import hmac
 import hashlib
 
 from . import canonical
-
+from .util import safe_encode
 
 class Authorization(object):
     """Class for signing AWS HTTP requests adhering to Signature Version 4 specification
@@ -35,7 +35,7 @@ class Authorization(object):
             msg: hash message
             
         Returns message authentication signature"""
-        return hmac.new(key, msg.encode('utf-8'), hashlib.sha256).digest()
+        return hmac.new(safe_encode(key), safe_encode(msg), hashlib.sha256).digest()
 
     def _header(self, credential_scope, signed_headers, signature):
         """Creates HTTP header
@@ -63,17 +63,17 @@ class Authorization(object):
             (self.constants.algorithm, 
              amzdate, 
              credential_scope, 
-             hashlib.sha256(canonical_request).hexdigest())
+             hashlib.sha256(safe_encode(canonical_request)).hexdigest())
 
     def signature(self, datestamp, string_to_sign):
-        """Creates signture of HTTP request
+        """Creates signature of HTTP request
         
         Parameters:
             datestamp: '%Y%m%d' stamp
             string_to_string: hash input string
             
         Returns string signature"""
-        return hmac.new(self.signature_key(datestamp), (string_to_sign).encode('utf-8'), hashlib.sha256).hexdigest()
+        return hmac.new(self.signature_key(datestamp), safe_encode(string_to_sign), hashlib.sha256).hexdigest()
 
     def signature_key(self, date_stamp):
         """Creates signing key
@@ -82,7 +82,7 @@ class Authorization(object):
             date_stamp: '%Y%m%d' stamp
 
         Returns signing key string"""
-        date    = Authorization.sign(('AWS4' + self.creds.secret_key).encode('utf-8'), date_stamp)
+        date    = Authorization.sign(safe_encode('AWS4' + self.creds.secret_key), date_stamp)
         region  = Authorization.sign(date, self.constants.region)
         service = Authorization.sign(region, self.constants.service)
         signing = Authorization.sign(service, self.constants.signing)
@@ -105,7 +105,7 @@ class Authorization(object):
         headers = headers if headers else {}
         credential_scope  = self.canonical_builder.credential_scope(datestamp)
         canonical_request = self.canonical_builder.canonical_request(amzdate, uri, method, qs, headers, payload)
-        signed_headers    = self.canonical_builder.signed_headers(headers.keys())
+        signed_headers    = self.canonical_builder.signed_headers(list(headers.keys()))
         string_to_sign    = self.string_to_sign(amzdate, credential_scope, canonical_request)
         signature         = self.signature(datestamp, string_to_sign)
 

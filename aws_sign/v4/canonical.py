@@ -1,7 +1,8 @@
 import copy
-import urllib
-import base64
 import hashlib
+from six.moves.urllib import parse
+
+from .util import safe_encode
 
 class ArgumentBuilder(object):
     """Constructs requiste arguments for Signature version 4 signing.
@@ -38,7 +39,7 @@ class ArgumentBuilder(object):
             return ''
         else:
             items = sorted(query_args.items(), key=lambda i: i[0])
-            return urllib.urlencode(items, True)
+            return parse.urlencode(items, True)
 
     def _merge_headers(self, headers):
         """Merges input headers with default headers 
@@ -64,7 +65,7 @@ class ArgumentBuilder(object):
         if not headers:
             headers = []
         return ';'.join(sorted([name.lower() for name in 
-                                set(self.constants.headers.keys() + headers)]))
+                                set(list(self.constants.headers.keys()) + headers)]))
 
     def canonical_headers(self, amzdate, headers=None):
         """Constructs canonical headers
@@ -98,8 +99,8 @@ class ArgumentBuilder(object):
              uri, 
              qs, 
              self.canonical_headers(amzdate, headers), 
-             self.signed_headers(headers.keys() if headers else None),
-             ArgumentBuilder.payload_hash(payload))
+             self.signed_headers(list(headers.keys()) if headers else None),
+             ArgumentBuilder.payload_hash(safe_encode(payload)))
 
     def credential_scope(self, datestamp):
         """Constructs signing credential scope 
